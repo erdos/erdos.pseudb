@@ -1,4 +1,5 @@
-(ns erdos.pseudb)
+(ns ^{:author "Janos Erdos" :doc "Small clojure schemaless document oriented data structure"}
+  erdos.pseudb)
 
 (defn assocf
   ([m k f]
