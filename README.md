@@ -25,8 +25,12 @@ where clauses are optional and k1, k2, ..., kn are keywords.
 
 #### example
 ```clojure
-(def db0 (ps/create (UNIQUE :fname :lname)))
+(def db0
+  (ps/create (UNIQUE :fname :lname)))
 ;; may not insert two items with the same :fname :lname values.
+
+(ps/create (INDEX :a :b) (UNIQUE :a :b :c))
+(ps/create) ; => always O(n) time find.
 ```
 
 ### ffind
