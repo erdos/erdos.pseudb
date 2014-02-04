@@ -34,8 +34,10 @@ where clauses are optional and k1, k2, ..., kn are keywords.
 ```
 
 ### ffind
+
 `(ffind db m)`
-Returns a list of all supermaps of m in db. Takes O(1) time when indices are set for some keys in m.
+
+Returns a list of all supermaps of m in db. Takes O(1) time when indices exist for keys in m.
 
 **example:**
 ```clojure
@@ -43,5 +45,15 @@ Returns a list of all supermaps of m in db. Takes O(1) time when indices are set
 ```
 
 ### rremove
+
+`(rremove db m)`
+
+Returns a new version of db with all supermaps of m removed. Takes O(1) time when indices exist for keys in m.
+
+**example:**
+```clojure
+(rremove db0 {:a 1}) ; => removes {:a 1}, {:a 1, :b 2}, etc..
+(rremove db0 {}) ; => removes all elements. slow.
+```
 
 ### insert or update
