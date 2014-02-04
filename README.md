@@ -23,7 +23,7 @@ Create a pseudb object by calling the `create` functions. You can set up the ind
 **clause:** `(UNIQUE k1 k2 .. kn)` or `(INDEX k1 k2 .. kn)`
 where clauses are optional and k1, k2, ..., kn are keywords.
 
-#### example
+**example:**
 ```clojure
 (def db0
   (ps/create (UNIQUE :fname :lname)))
@@ -34,6 +34,13 @@ where clauses are optional and k1, k2, ..., kn are keywords.
 ```
 
 ### ffind
+`(ffind db m)`
+Returns a list of all supermaps of m in db. Takes O(1) time when indices are set for some keys in m.
+
+**example:**
+```clojure
+(ffind db {:a 1 :b 2})
+```
 
 ### rremove
 
