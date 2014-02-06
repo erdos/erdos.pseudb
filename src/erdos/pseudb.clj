@@ -49,7 +49,9 @@
                   (get mp (-vls m) [])))
               (adds- [_ m i]
                 (when (every? m ks)
-                  (-neue (assocf mp (-vls m) #(conj % i) #{i}))))
+;;                  (-neue (update-in [(-vls m)] (fnil conj #{i}) i))
+                   (-neue (assocf mp (-vls m) #(conj % i) #{i}))
+                  ))
               (remv- [this old i]
                 (when (every? old ks)
                   (let [v (-vls old)]
@@ -100,6 +102,7 @@
 
                                         ; read
 
+;; TODO: not submap check, but intersections first.
 (defn find*
   [db w]
   (let [ks (map #(find- % w) (:indices db))]
@@ -210,6 +213,10 @@
            (insert db0 res-obj)
            (recur db0 res-obj f)))))))
 
+(defn insert-replace [db obj]
+  (insert-merge db obj
+                (comp second list)))
+
 (defn to-seq
   [db] (vals (:data db)))
 
@@ -240,6 +247,8 @@
             (time (doall (ffind db {:b n}))) ;; slow.
             (time (doall (ffind db {:a n})))
             (time (doall (ffind db {:a n :b n}))))))
+
+  (ffind a0 {[< :a] 4, [> :b] 5})
 
   )
 

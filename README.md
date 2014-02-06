@@ -57,3 +57,13 @@ Returns a new version of db with all supermaps of m removed. Takes O(1) time whe
 ```
 
 ### insert or update
+
+`(insert-merge db obj f)`
+
+Inserts `obj` to `db` collisions resolved by fn `f`.
+Returns a new version of `db` storage object.
+Tries to insert `obj` and on collision, removes colliding item from db, calls `f` with the old item and new item, and repeatedly tries to insert result. Always suceeds.
+
+`(insert-replace db obj)`
+
+Inserts `obj` to `db` and removes all colliding old items.
