@@ -100,6 +100,14 @@
    {:a 1 :b 1}
    (comp first list))
 
+
+   (ps/rremove
+   (ps/insert
+    (ps/create (UNIQUE :a))
+    {:a 1} {:a 2} {:a 3})
+   {})
+
+
     (ps/ffind-collision
      (ps/insert
       (ps/create (UNIQUE :a)
@@ -107,6 +115,20 @@
       {:a 1} {:a 2} {:a 3} {:b 2})
      {:b 2 :a 1})
 
+    ;; idea: (IMPLIES a b) -> when a is present, b has to be also present.
+    ;;   IMPLIES applies only to inserts.
+    ;; not sure if a good idea.
+
+    (ps/create
+
+     (UNIQUE :ns-name) ;; on ns information
+     (UNIQUE :in-ns :var-name) ;; on var information
+     (INDEX :var-name) (INDEX :in-ns)
+     (INDEX )
+     (INDEX :category)
+     ;(IMPLIES :in-ns :var-name)
+
+     )
 
 
   )
