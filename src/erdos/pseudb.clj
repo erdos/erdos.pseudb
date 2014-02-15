@@ -176,12 +176,13 @@
                                         ; update
 
 (defn updatef
-  "Calls f on all items where wmap matches."
+  "Calls f on all items where wmap matches. returns nil when no items found."
   [db wmap f]
   (let [old (ffind db wmap)]
-    (apply insert
-           (apply rremove db old)
-           (map f old))))
+    (when (seq old)
+      (apply insert
+             (apply rremove db old)
+             (map f old)))))
 
 (defn ffind-collision
   "Find colliding objects in db."
@@ -231,6 +232,9 @@
     {:a 1 :b 2} {:a 2 :b 22} {:a 3 :b 33}))
 
 
+  (create (UNIQUE [:a])
+          (INDEX [:a :b :c]))
+
   (ffind a0 :a 2)
   (ffind a0 {:b 2})
   (rremove a0 {:a 1})
@@ -242,7 +246,7 @@
   (do
     (System/gc)
     (time (let [n  50000
-                db (create (INDEX [:a]) (INDEX [:a :b]))
+                db (create (INDEX :a) (INDEX :a :b))
                 db (reduce (fn [db x] (insert db {:a x :b x})) db (range n))]
             (time (doall (ffind db {:b n}))) ;; slow.
             (time (doall (ffind db {:a n})))
