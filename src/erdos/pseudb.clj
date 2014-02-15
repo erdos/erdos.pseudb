@@ -12,10 +12,10 @@
 
 (defn- assocf
   ([m k f]
-     (assoc m (f (get m k))))
+     (assoc m k (f (get m k))))
   ([m k f d]
      (if (contains? m k)
-       (assoc m k(f (get m k)))
+       (assoc m k (f (get m k)))
        (assoc m k d))))
 
 (def IndexStrategy nil)
@@ -35,25 +35,24 @@
   ;;          this when not removed or not compatible.
   (remv- [_ m is]))
 
-
 (defn +MultiIndex
   "Strategy for not unique, nil allowed index."
   [& ks]
   ;(assert (coll? ks))
   (assert (every? keyword? ks))
   (letfn [(-vls [obj] (vec (map obj ks)))
+          (-appliable [obj] (every? obj ks))
           (-neue [mp]
             (reify IndexStrategy
               (find- [_ m]
-                (when (every? m ks)
+                (when (-appliable m)
                   (get mp (-vls m) [])))
               (adds- [_ m i]
-                (when (every? m ks)
-;;                  (-neue (update-in [(-vls m)] (fnil conj #{i}) i))
-                   (-neue (assocf mp (-vls m) #(conj % i) #{i}))
-                  ))
+                (when (-appliable m)
+                  (-neue (assocf mp (-vls m)
+                                 #(conj % i) #{i}))))
               (remv- [this old i]
-                (when (every? old ks)
+                (when (-appliable old)
                   (let [v (-vls old)]
                     (-neue (assoc mp v (disj (get mp v) i))))))))]
     (-neue {})))
@@ -194,8 +193,6 @@
          (remove  #(adds- % obj -1)
                   (:indices db))))))
 
-;;; insert-merge: problem: may collide with multi vals.
-
 (defn insert-merge
   "Inserts obj or replaces existing entity by
    the value of calling f.
@@ -224,36 +221,5 @@
 (defn size
   "Size of db obj"
   [db] (-> db :data count))
-
-(comment
-
-  (def a0    (insert
-    (create (UNIQUE [:a]))
-    {:a 1 :b 2} {:a 2 :b 22} {:a 3 :b 33}))
-
-
-  (create (UNIQUE [:a])
-          (INDEX [:a :b :c]))
-
-  (ffind a0 :a 2)
-  (ffind a0 {:b 2})
-  (rremove a0 {:a 1})
-  (insert   (remove* a0 {:a 1}) {:a 5})
-
-  (create)
-
-  ;; 1000x speed difference when searching for indexed.
-  (do
-    (System/gc)
-    (time (let [n  50000
-                db (create (INDEX :a) (INDEX :a :b))
-                db (reduce (fn [db x] (insert db {:a x :b x})) db (range n))]
-            (time (doall (ffind db {:b n}))) ;; slow.
-            (time (doall (ffind db {:a n})))
-            (time (doall (ffind db {:a n :b n}))))))
-
-  (ffind a0 {[< :a] 4, [> :b] 5})
-
-  )
 
 :OK
