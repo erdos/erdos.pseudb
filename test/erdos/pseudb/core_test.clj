@@ -7,8 +7,9 @@
   (testing "Empty structure"
     (is (not (nil? (ps/create)))))
   (testing "Simple index"
-    (is (not (nil? (ps/create (INDEX [:a :b :c]))))))
+    (is (not (nil? (ps/create (INDEX :a :b :c))))))
   (testing "unique index")
+  ;; ...
   )
 
 (deftest index-simple
@@ -70,65 +71,79 @@
 
    (testing "")))
 
+(deftest index-simple
+  "adasddas"
+  (let [db (ps/create (INDEX :a))
+        xs '({:a 1 :b 2} {:a 2 :b 3} {:a 3 :b 4})
+        db (apply ps/insert db xs)]
 
-(deftest ins-merg
-  (let [db (ps/create (UNIQUE :a))
-        db (ps/insert db {:a 1} {:a 2})
-        old (comp second list)
-        neu (comp first list)
-        insert (partial ps/insert-merge db)]
-    (testing "null db"
-      (is (thrown?
-           NullPointerException
-           (ps/insert-merge nil {:a 1} old))))
-    (testing "no collision"
-      (is (= (inc (ps/size db))
-             (ps/size (insert {:a 3} old))))
-      (is (= (inc (ps/size db))
-             (ps/size (insert {:x 5} old)))))
-    (testing "first rank collision"
-      (is (= (ps/size db)
-             (ps/size (insert {:a 2} old))
-             (ps/size (insert {:a 2} neu)))))))
+    (testing "access with index"
+      (are [x] (= 1 (count (ps/ffind db x)))
+           {:a 1} {:a 2} {:a 3})
+      (is (= (first (ps/ffind db {:a 1}))
+             (first (ps/ffind db {:a 1 :b 2}))
+             {:a 1 :b 2})))
+
+    (testing "acces without index"
+      (is (= 1 (count (ps/ffind db {:b 2}))))
+      (is (= (first (ps/ffind db {:b 2}))
+             {:a 1 :b 2})))
+
+    (testing "should not find any"
+      (is (empty? (ps/ffind db {:c 12})))
+      (is (empty? (ps/ffind db {:a 1 :b 3}))))
+
+    (testing "find all items"
+      (is (= 3 (count (ps/ffind db {})))))
+
+    (testing "")))
+
+
+(deftest index-unique
+  "multiple insert"
+  (testing "insertions happen"
+    (-> (ps/create (UNIQUE :a))
+        (ps/insert {:a 1})
+        (ps/insert {:b 2})
+        (count)
+        (= 2))))
 
 (comment
+  (let [s (ps/create (INDEX :b))]
+    [(seq s) (count s) (.cnt s)])
+  (let [s (ps/create (INDEX :b))]
+    (ps/insert s {:c 1}))
 
-  (ps/insert-merge
-   (ps/insert
-    (ps/create (UNIQUE :a))
-    {:a 1} {:a 2} {:a 3})
-   {:a 1 :b 1}
-   (comp first list))
+  (-> (ps/create)
+      (ps/insert {:c 1})
+      (ps/ffind {:c 1}))
 
+  (-> (ps/create (INDEX :c))
+      (ps/insert {:c 1})
+      (ps/ffind {:c 1}))
 
-   (ps/rremove
-   (ps/insert
-    (ps/create (UNIQUE :a))
-    {:a 1} {:a 2} {:a 3})
-   {})
+  (-> (ps/create (UNIQUE :c))
+      (ps/insert {:c 1})
+      (ps/ffind {:c 1}))
 
-
-    (ps/ffind-collision
-     (ps/insert
-      (ps/create (UNIQUE :a)
-                 (UNIQUE :b))
-      {:a 1} {:a 2} {:a 3} {:b 2})
-     {:b 2 :a 1})
-
-    ;; idea: (IMPLIES a b) -> when a is present, b has to be also present.
-    ;;   IMPLIES applies only to inserts.
-    ;; not sure if a good idea.
-
-    (ps/create
-
-     (UNIQUE :ns-name) ;; on ns information
-     (UNIQUE :in-ns :var-name) ;; on var information
-     (INDEX :var-name) (INDEX :in-ns)
-     (INDEX )
-     (INDEX :category)
-     ;(IMPLIES :in-ns :var-name)
-
-     )
+  (-> (ps/create (UNIQUE :d))
+      (ps/insert {:c 1})
+      (ps/ffind {:c 1}))
 
 
+
+
+  ;; should give 2 elems.
+  (-> (ps/create (UNIQUE :b))
+      (ps/insert {:c 1})
+      (ps/insert {:d 1})
+      count)
+  ;; should give 2 elems.
+  (-> (ps/create (INDEX :b))
+      (ps/insert {:c 1})
+      (ps/insert {:d 1})
+      count)
+
+  (let [s (ps/create (UNIQUE :b))]
+    (ps/insert s {:c 1}))
   )

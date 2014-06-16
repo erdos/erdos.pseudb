@@ -18,8 +18,6 @@
        (assoc m k (f (get m k)))
        (assoc m k d))))
 
-(def IndexStrategy nil)
-
 (defprotocol IndexStrategy
   ;; @returns (possibly empty) seq of result indices or
   ;; nil when index not compatible with where-map.
@@ -47,10 +45,11 @@
               (find- [_ m]
                 (when (-appliable m)
                   (get mp (-vls m) [])))
-              (adds- [_ m i]
-                (when (-appliable m)
+              (adds- [t m i]
+                (if (-appliable m)
                   (-neue (assocf mp (-vls m)
-                                 #(conj % i) #{i}))))
+                                 #(conj % i) #{i}))
+                  t))
               (remv- [this old i]
                 (when (-appliable old)
                   (let [v (-vls old)]
@@ -92,27 +91,27 @@
   (({'INDEX +MultiIndex
      'UNIQUE +UniqueIndex} k) v))
 
-(defn create* [indices]
-  {:data {}, :cnt 0, :indices (map create-index indices)})
-
+(deftype PStorage
+    [data cnt indices]
+  clojure.lang.Counted
+  (count [_] (count data))
+  clojure.lang.Seqable
+  (seq [_] (-> data vals seq))
+  java.lang.Object
+  (toString [t] (str "<storage of " (count t) " items>")))
 
 (defmacro create [& indices]
-  `(create* '~indices))
+  `(->PStorage {} 0 (map ~create-index '~indices)))
 
                                         ; read
 
 ;; TODO: not submap check, but intersections first.
 (defn find*
-  [db w]
-  (let [ks (map #(find- % w) (:indices db))]
-    (if-not (every? nil? ks)
-      (filter
-       (partial submap? w)
-       (map (:data db)
-            (distinct (apply concat ks))))
-      ;; ez nem jo!!
-      (filter (partial submap? w)
-              (-> db :data vals)))))
+  [^PStorage db w]
+  (if-let [s (some #(find- % w) (.indices db))]
+    (filter (partial submap? w) (map (.data db) s))
+    (filter (partial submap? w)
+            (-> db .data vals))))
 
 
 (defmacro ffind
@@ -133,28 +132,26 @@
                                         ; insert
 
 
-(defn- insert* [db obj]
+(defn- insert-one [db obj]
   (assert (map? obj))
-  (let [cnt (-> db :cnt inc)
+  (let [cnt (inc (.cnt db))
         ids (map (fn [x] (adds- x obj cnt))
-                 (:indices db))]
+                 (.indices db))]
     (when (not-any? nil? ids)
-      {:cnt     cnt
-       :data    (assoc (:data db) cnt obj)
-       :indices ids})))
+      (->PStorage (assoc (.data db) cnt obj) cnt ids))))
 
 
 (defn insert
   "Returns nil when could not insert."
   [db & objs]
   (if (seq objs)
-    (if-let [db (insert* db (first objs))]
+    (when-let [db (insert-one db (first objs))]
       (recur db (rest objs)))
     db))
 
                                         ; remove
 
-(defn remove* [db obj]
+(defn- remove-one [db obj]
   (let [ids (map #(find- % obj) (:indices db))
         ids (set (apply concat ids))]
     (if (empty? ids)
@@ -170,7 +167,7 @@
                       (:indices db))))))
 
 (defn rremove [db & objs]
-  (reduce remove* db objs))
+  (reduce remove-one db objs))
 
                                         ; update
 
@@ -203,7 +200,7 @@
     (if-not clidx
       (insert db obj)
       (let [fnd-idx (first (find- clidx obj))
-            fnd-obj (get (:data db) fnd-idx)
+            fnd-obj (get (.data db) fnd-idx)
             db0     (rremove db fnd-obj)
             res-obj (f obj fnd-obj)]
         (if res-obj
@@ -215,11 +212,5 @@
   (insert-merge db obj
                 (comp second list)))
 
-(defn to-seq
-  [db] (vals (:data db)))
-
-(defn size
-  "Size of db obj"
-  [db] (-> db :data count))
 
 :OK
