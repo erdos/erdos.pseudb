@@ -62,7 +62,7 @@
   [& ks]
 ;  (assert (coll? ks))
   (assert (every? keyword? ks))
-  (letfn [(-vls [obj] (vec (map obj ks)))
+  (letfn [(-vls [obj] (mapv obj ks))
           (-neue [mp]
             (reify IndexStrategy
               (find- [_ m]
@@ -87,8 +87,8 @@
                                         ; create
 
 (defn- create-index
-  [[k v]]
-  (({'INDEX +MultiIndex
+  [[k & v]]
+  (apply ({'INDEX +MultiIndex
      'UNIQUE +UniqueIndex} k) v))
 
 (deftype PStorage

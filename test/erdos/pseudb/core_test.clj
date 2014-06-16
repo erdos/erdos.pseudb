@@ -106,7 +106,20 @@
         (ps/insert {:a 1})
         (ps/insert {:b 2})
         (count)
+        (= 2)))
+  (testing "compound index"
+    (-> (ps/create (UNIQUE :b :a))
+        (ps/insert {:a 1 :b 1})
+        (ps/insert {:a 1 :b 2})
+        (count)
+        (= 2)))
+  (testing "compound index"
+    (-> (ps/create (INDEX :a :b))
+        (ps/insert {:a 1 :b 1})
+        (ps/insert {:a 1 :b 2})
+        (count)
         (= 2))))
+
 
 (comment
   (let [s (ps/create (INDEX :b))]
