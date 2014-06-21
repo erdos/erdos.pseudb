@@ -33,6 +33,7 @@
   ;;          this when not removed or not compatible.
   (remv- [_ m is]))
 
+
 (defn +MultiIndex
   "Strategy for not unique, nil allowed index."
   [& ks]
@@ -91,6 +92,7 @@
   (apply ({'INDEX +MultiIndex
      'UNIQUE +UniqueIndex} k) v))
 
+
 (deftype PStorage
     [data cnt indices]
   clojure.lang.Counted
@@ -99,6 +101,7 @@
   (seq [_] (-> data vals seq))
   java.lang.Object
   (toString [t] (str "<storage of " (count t) " items>")))
+
 
 (defmacro create [& indices]
   `(->PStorage {} 0 (map ~create-index '~indices)))
@@ -152,19 +155,20 @@
                                         ; remove
 
 (defn- remove-one [db obj]
-  (let [ids (map #(find- % obj) (:indices db))
+  (let [ids (map #(find- % obj) (.indices db))
         ids (set (apply concat ids))]
     (if (empty? ids)
-      (assoc db
-        :data (into
-               {}
-               (clojure.core/remove
-                (comp (partial submap? obj) val)
-                (:data db))))
-      (assoc db
-        :data    (apply dissoc (:data db) ids)
-        :indices (map #(or (remv- % obj ids) %)
-                      (:indices db))))))
+      (->PStorage
+       (into
+        {}
+        (clojure.core/remove
+         (comp (partial submap? obj) val)
+         (.data db))) (.cnt db) (.indices db))
+      (->PStorage
+       (apply dissoc (.data db) ids)
+       (.cnt db)
+       (map #(or (remv- % obj ids) %)
+            (.indices db))))))
 
 (defn rremove [db & objs]
   (reduce remove-one db objs))
@@ -183,22 +187,23 @@
 (defn ffind-collision
   "Find colliding objects in db."
   [db obj]
-  (map (:data db)
+  (map (.data db)
        (distinct
         (mapcat
          #(find- % obj)
          (remove  #(adds- % obj -1)
-                  (:indices db))))))
+                  (.indices db))))))
 
 (defn insert-merge
   "Inserts obj or replaces existing entity by
-   the value of calling f.
+   the value of calling (f new existing).
    When f returns nil, returns nil"
   [db obj f]
   (let [cf    #(adds- % obj -1)
-        clidx (first (remove cf (:indices db)))]
-    (if-not clidx
-      (insert db obj)
+        clidx (first (remove cf (.indices db)))]
+    (println "clidx: " clidx)
+    (if (nil? clidx)
+      (insert-one db obj)
       (let [fnd-idx (first (find- clidx obj))
             fnd-obj (get (.data db) fnd-idx)
             db0     (rremove db fnd-obj)
@@ -209,8 +214,7 @@
            (recur db0 res-obj f)))))))
 
 (defn insert-replace [db obj]
-  (insert-merge db obj
-                (comp second list)))
+  (insert-merge db obj (fn [n o] n)))
 
 
 :OK

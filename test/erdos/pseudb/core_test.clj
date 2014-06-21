@@ -159,4 +159,15 @@
 
   (let [s (ps/create (UNIQUE :b))]
     (ps/insert s {:c 1}))
+
+  (let [s (ps/create (UNIQUE :b))
+        s (ps/insert s {:b 1})]
+ (seq  (ps/insert-replace s {:b 1 :c 1.1})))
+
+  (let [s (ps/create (UNIQUE :b))
+        s (ps/insert s {:b 1 :a 1.1})]
+    (seq  (ps/insert-merge s {:b 1 :c 1.1} merge)))
+
+
+
   )
