@@ -201,7 +201,6 @@
   [db obj f]
   (let [cf    #(adds- % obj -1)
         clidx (first (remove cf (.indices db)))]
-    (println "clidx: " clidx)
     (if (nil? clidx)
       (insert-one db obj)
       (let [fnd-idx (first (find- clidx obj))
