@@ -168,6 +168,46 @@
         s (ps/insert s {:b 1 :a 1.1})]
     (seq  (ps/insert-merge s {:b 1 :c 1.1} merge)))
 
+  ;;; HIBAHIBA
+
 
 
   )
+
+(deftest test-remove
+  (testing "remove with one simple index"
+    (let [db (ps/create (INDEX :a)
+                        (INDEX :b))
+          db (ps/insert db {:a 1} {:a 2})
+          db (ps/insert db {:b 1} {:b 2})
+          db (ps/rremove db {:a 1} {:b 2})]
+      (is (= (set (seq db))
+             #{{:b 1} {:a 2}}))))
+  (testing "remove element not present"
+    (let [db (ps/create (INDEX :a)
+                        (INDEX :b))
+          db (ps/insert db {:a 1} {:a 2})
+          db (ps/insert db {:b 1} {:b 2})]
+      (is (->
+           (ps/rremove db {:c 3} {:a 3})
+           count (= 4)))
+      (is (->
+           (ps/rremove db {:a 1 :b 1})
+           count (= 4)))))
+
+  )
+
+
+(deftest test-insert-merge
+  (testing "multi inserts"
+    (let [db (ps/create (UNIQUE :id)
+                        (INDEX :a)
+                        (INDEX :b))
+        f (fn [neu old] (assoc neu :old old))
+        ins (fn [db x] (ps/insert-merge db x f))]
+    (-> db
+        (ins {:a 1})
+        (ins {:a 1 :b 3})
+        (ins {:id 1 :a 1})
+        (ins {:id 1 :a 2})
+        count (= 3) is))))

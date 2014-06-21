@@ -59,7 +59,7 @@
 
 
 (defn +UniqueIndex
-  "Strategy for not unique index. throws exception on overwrite."
+  "Strategy for unique index."
   [& ks]
 ;  (assert (coll? ks))
   (assert (every? keyword? ks))
@@ -67,7 +67,7 @@
           (-neue [mp]
             (reify IndexStrategy
               (find- [_ m]
-                (if (every? m ks)
+                (when (every? m ks)
                   (if-let [i (get mp (-vls m))]
                     [i] [])))
               (adds- [this m i]
@@ -154,21 +154,28 @@
 
                                         ; remove
 
-(defn- remove-one [db obj]
-  (let [ids (map #(find- % obj) (.indices db))
-        ids (set (apply concat ids))]
-    (if (empty? ids)
-      (->PStorage
-       (into
-        {}
-        (clojure.core/remove
-         (comp (partial submap? obj) val)
-         (.data db))) (.cnt db) (.indices db))
-      (->PStorage
-       (apply dissoc (.data db) ids)
-       (.cnt db)
-       (map #(or (remv- % obj ids) %)
-            (.indices db))))))
+(defn- remove-one
+  "Returns db with obj removed."
+  [db obj]
+  (let [ids0 (map #(find- % obj) (.indices db))]
+    (if
+     (every? nil? ids0) ;; hard filtering is needed.
+     (->PStorage
+      (into {}
+            (clojure.core/remove
+             (comp (partial submap? obj) val)
+             (.data db))) (.cnt db) (.indices db))
+
+     (if (every? empty? ids0)
+       db
+       (let [ids (set (apply concat ids0))
+             ids (filter #(submap? obj (get (.data db) %))
+                         ids)]
+         (->PStorage
+          (apply dissoc (.data db) ids)
+          (.cnt db)
+          (map #(or (remv- % obj ids) %)
+               (.indices db))))))))
 
 (defn rremove [db & objs]
   (reduce remove-one db objs))
@@ -187,6 +194,7 @@
 (defn ffind-collision
   "Find colliding objects in db."
   [db obj]
+  (assert (instance? PStorage db))
   (map (.data db)
        (distinct
         (mapcat
@@ -199,15 +207,17 @@
    the value of calling (f new existing).
    When f returns nil, returns nil"
   [db obj f]
-  (let [cf    #(adds- % obj -1)
-        clidx (first (remove cf (.indices db)))]
-    (if (nil? clidx)
+  (assert (instance? PStorage db))
+  (let [colliding
+        (some (fn [x] (if-not (adds- x obj -1) x))
+              (.indices db))]
+    (if (nil? colliding)
       (insert-one db obj)
-      (let [fnd-idx (first (find- clidx obj))
-            fnd-obj (get (.data db) fnd-idx)
-            db0     (rremove db fnd-obj)
+      (let [fnd-obj (get (.data db)
+                         (first (find- colliding obj)))
+            db0     (remove-one db fnd-obj)
             res-obj (f obj fnd-obj)]
-        (if res-obj
+        (when res-obj
           (or
            (insert db0 res-obj)
            (recur db0 res-obj f)))))))
