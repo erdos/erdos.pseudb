@@ -123,6 +123,9 @@
    linear search is peformed.
    Usage: (ffind :a 1) or (ffind {:a 1})"
   [db & mp]
+  (when (keyword? db)
+    (-> "You forgot to add db obj as first arg."
+        IllegalArgumentException. throw))
   (cond
    (and (pos? (count mp)) (even? (count mp)))
    `(find* ~db (hash-map ~@mp))
