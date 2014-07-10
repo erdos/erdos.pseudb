@@ -127,6 +127,11 @@
   (let [s (ps/create (INDEX :b))]
     (ps/insert s {:c 1}))
 
+    (let [s (ps/create (INDEX :b))]
+      (count (ps/insert s nil)))
+
+
+
   (-> (ps/create)
       (ps/insert {:c 1})
       (ps/ffind {:c 1}))
