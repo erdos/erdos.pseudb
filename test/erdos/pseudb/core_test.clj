@@ -203,6 +203,14 @@
   )
 
 
+(deftest test-updatef
+  (let [db (ps/create (UNIQUE :id) (INDEX :a :b) (INDEX :c))
+        db (ps/insert db {:id 0 :a 1} {:id 1 :a 2} {:id 3 :a 2} {:id 4 :a 2 :b 1} {:a 3 :b 1} {:c 1} {:c 2})]
+    (let [db1 (ps/updatef db {:c 1} (constantly {:c 1.1}))]
+      (is (= (count db) (count db1)))
+      (is (seq (ps/ffind db1 {:c 1.1})))
+      (is (empty? (ps/ffind db1 {:c 1}))))))
+
 (deftest test-insert-merge
   (testing "multi inserts"
     (let [db (ps/create (UNIQUE :id)

@@ -2,7 +2,8 @@
   erdos.pseudb
   "Small clojure schemaless document
    oriented data structure."
-  (:require clojure.set))
+  (:require clojure.set)
+  (:gen-class))
 
 (defn- submap?
   [sm large]
@@ -93,6 +94,7 @@
      'UNIQUE +UniqueIndex} k) v))
 
 
+;; to define once only.
 (deftype PStorage
     [data cnt indices]
   clojure.lang.Counted
@@ -101,6 +103,9 @@
   (seq [_] (-> data vals seq))
   java.lang.Object
   (toString [t] (str "<storage of " (count t) " items>")))
+
+;; (println "hajdiho")
+;; (println (bean erdos.pseudb.PStorage))
 
 
 (defmacro create [& indices]
@@ -115,7 +120,6 @@
     (filter (partial submap? w) (map (.data db) s))
     (filter (partial submap? w)
             (-> db .data vals))))
-
 
 (defmacro ffind
   "Find all occurences in db.
@@ -140,6 +144,8 @@
 
 (defn- insert-one [db obj]
   (assert (map? obj))
+  (assert (instance? PStorage db)
+          (str "No PStorage object, got: " (type db)))
   (let [cnt (inc (.cnt db))
         ids (map (fn [x] (adds- x obj cnt))
                  (.indices db))]
@@ -186,18 +192,26 @@
                                         ; update
 
 (defn updatef
-  "Calls f on all items where wmap matches. returns nil when no items found."
+  "Calls f on all items where wmap matches. returns same object when no item is found. returns nil when f returns nil."
   [db wmap f]
-  (let [old (ffind db wmap)]
-    (when (seq old)
-      (apply insert
-             (apply rremove db old)
-             (map f old)))))
+  (assert (instance? PStorage db)
+          (str "no PStorate object, got instead: " (type db)))
+  (assert (map? wmap))
+  (assert (ifn? f))
+  (loop [db  db
+         old (seq (ffind db wmap))]
+    (if-let [[x & xs] old]
+      (when-let [fx (f x)]
+        (-> db
+            (remove-one x)
+            (insert-one fx)
+            (recur xs)))
+      db)))
 
 (defn ffind-collision
   "Find colliding objects in db."
   [db obj]
-  (assert (instance? PStorage db))
+;;  (assert (instance? PStorage db))
   (map (.data db)
        (distinct
         (mapcat
@@ -210,7 +224,7 @@
    the value of calling (f new existing).
    When f returns nil, returns nil"
   [db obj f]
-  (assert (instance? PStorage db))
+;;  (assert (instance? PStorage db))
   (let [colliding
         (some (fn [x] (if-not (adds- x obj -1) x))
               (.indices db))]
